@@ -104,12 +104,13 @@ export class FooterComponent implements Component {
 			pwd = `${pwd} • ${sessionName}`;
 		}
 
-		// Build stats line
+		// Build stats line — append * when stats just updated, absent when stale
+		const fresh = this.footerData.isStatsFresh() ? " *" : "";
 		const statsParts = [];
 		const inputTps = this.footerData.getLastInputTps();
 		const outputTps = this.footerData.getLastOutputTps();
 		if (totalInput) statsParts.push(`↑${formatTokens(totalInput)}${inputTps ? ` ${inputTps}t/s` : ""}`);
-		if (totalOutput) statsParts.push(`↓${formatTokens(totalOutput)}${outputTps ? ` ${outputTps}t/s` : ""}`);
+		if (totalOutput) statsParts.push(`↓${formatTokens(totalOutput)}${outputTps ? ` ${outputTps}t/s` : ""}${fresh}`);
 		if (totalCacheRead) statsParts.push(`R${formatTokens(totalCacheRead)}`);
 		if (totalCacheWrite) statsParts.push(`W${formatTokens(totalCacheWrite)}`);
 
@@ -208,7 +209,7 @@ export class FooterComponent implements Component {
 			const sortedStatuses = Array.from(extensionStatuses.entries())
 				.sort(([a], [b]) => a.localeCompare(b))
 				.map(([, text]) => sanitizeStatusText(text));
-			const statusLine = sortedStatuses.join(" ");
+			const statusLine = sortedStatuses.join(" | ");
 			// Truncate to terminal width with dim ellipsis for consistency with footer style
 			lines.push(truncateToWidth(statusLine, width, theme.fg("dim", "...")));
 		}

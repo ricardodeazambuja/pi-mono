@@ -46,6 +46,7 @@ export class FooterDataProvider {
 	private _messageStartTime = 0;
 	private _lastInputTps = 0;
 	private _lastOutputTps = 0;
+	private _statsFresh = false;
 
 	constructor() {
 		this.setupGitWatcher();
@@ -107,6 +108,7 @@ export class FooterDataProvider {
 	/** Internal: record when an assistant message starts streaming */
 	recordMessageStart(): void {
 		this._messageStartTime = Date.now();
+		this._statsFresh = false;
 	}
 
 	/** Internal: record when an assistant message finishes, compute throughput */
@@ -118,6 +120,7 @@ export class FooterDataProvider {
 				this._lastOutputTps = Math.round(outputTokens / durationSec);
 			}
 			this._messageStartTime = 0;
+			this._statsFresh = true;
 		}
 	}
 
@@ -129,6 +132,11 @@ export class FooterDataProvider {
 	/** Last assistant message output tokens/second */
 	getLastOutputTps(): number {
 		return this._lastOutputTps;
+	}
+
+	/** Whether token stats were just updated (true) or are stale (false) */
+	isStatsFresh(): boolean {
+		return this._statsFresh;
 	}
 
 	/** Internal: cleanup */
@@ -176,4 +184,5 @@ export type ReadonlyFooterDataProvider = Pick<
 	| "onBranchChange"
 	| "getLastInputTps"
 	| "getLastOutputTps"
+	| "isStatsFresh"
 >;

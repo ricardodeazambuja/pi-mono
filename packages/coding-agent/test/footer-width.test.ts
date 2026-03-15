@@ -69,6 +69,7 @@ function createFooterData(providerCount: number): ReadonlyFooterDataProvider {
 		},
 		getLastInputTps: () => 0,
 		getLastOutputTps: () => 0,
+		isStatsFresh: () => false,
 	};
 
 	return provider;
