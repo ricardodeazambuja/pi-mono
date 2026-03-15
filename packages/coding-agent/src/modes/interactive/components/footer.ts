@@ -106,8 +106,10 @@ export class FooterComponent implements Component {
 
 		// Build stats line
 		const statsParts = [];
-		if (totalInput) statsParts.push(`↑${formatTokens(totalInput)}`);
-		if (totalOutput) statsParts.push(`↓${formatTokens(totalOutput)}`);
+		const inputTps = this.footerData.getLastInputTps();
+		const outputTps = this.footerData.getLastOutputTps();
+		if (totalInput) statsParts.push(`↑${formatTokens(totalInput)}${inputTps ? ` ${inputTps}t/s` : ""}`);
+		if (totalOutput) statsParts.push(`↓${formatTokens(totalOutput)}${outputTps ? ` ${outputTps}t/s` : ""}`);
 		if (totalCacheRead) statsParts.push(`R${formatTokens(totalCacheRead)}`);
 		if (totalCacheWrite) statsParts.push(`W${formatTokens(totalCacheWrite)}`);
 

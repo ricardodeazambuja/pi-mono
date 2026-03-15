@@ -67,6 +67,8 @@ function createFooterData(providerCount: number): ReadonlyFooterDataProvider {
 			void callback;
 			return () => {};
 		},
+		getLastInputTps: () => 0,
+		getLastOutputTps: () => 0,
 	};
 
 	return provider;

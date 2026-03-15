@@ -43,6 +43,9 @@ export class FooterDataProvider {
 	private gitWatcher: FSWatcher | null = null;
 	private branchChangeCallbacks = new Set<() => void>();
 	private availableProviderCount = 0;
+	private _messageStartTime = 0;
+	private _lastInputTps = 0;
+	private _lastOutputTps = 0;
 
 	constructor() {
 		this.setupGitWatcher();
@@ -101,6 +104,33 @@ export class FooterDataProvider {
 		this.availableProviderCount = count;
 	}
 
+	/** Internal: record when an assistant message starts streaming */
+	recordMessageStart(): void {
+		this._messageStartTime = Date.now();
+	}
+
+	/** Internal: record when an assistant message finishes, compute throughput */
+	recordMessageEnd(inputTokens: number, outputTokens: number): void {
+		if (this._messageStartTime > 0) {
+			const durationSec = (Date.now() - this._messageStartTime) / 1000;
+			if (durationSec > 0) {
+				this._lastInputTps = Math.round(inputTokens / durationSec);
+				this._lastOutputTps = Math.round(outputTokens / durationSec);
+			}
+			this._messageStartTime = 0;
+		}
+	}
+
+	/** Last assistant message input tokens/second */
+	getLastInputTps(): number {
+		return this._lastInputTps;
+	}
+
+	/** Last assistant message output tokens/second */
+	getLastOutputTps(): number {
+		return this._lastOutputTps;
+	}
+
 	/** Internal: cleanup */
 	dispose(): void {
 		if (this.gitWatcher) {
@@ -140,5 +170,10 @@ export class FooterDataProvider {
 /** Read-only view for extensions - excludes setExtensionStatus, setAvailableProviderCount and dispose */
 export type ReadonlyFooterDataProvider = Pick<
 	FooterDataProvider,
-	"getGitBranch" | "getExtensionStatuses" | "getAvailableProviderCount" | "onBranchChange"
+	| "getGitBranch"
+	| "getExtensionStatuses"
+	| "getAvailableProviderCount"
+	| "onBranchChange"
+	| "getLastInputTps"
+	| "getLastOutputTps"
 >;
