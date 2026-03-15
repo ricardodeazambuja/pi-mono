@@ -328,12 +328,15 @@ function applyFilters(command: string, text: string): string {
 // --- Extension ---
 
 export default function (pi: ExtensionAPI) {
+	let enabled = true;
 	let savedTokens = 0;
 	let compressedCount = 0;
 	let totalToolResults = 0;
 
 	pi.on("tool_result" as any, async (event: any, _ctx: any) => {
 		totalToolResults++;
+
+		if (!enabled) return undefined;
 
 		// ONLY filter bash tool outputs. Other tools (read, grep, find, ls, edit,
 		// write) produce well-structured output from pi-coding-agent's tool system.
@@ -362,10 +365,21 @@ export default function (pi: ExtensionAPI) {
 		return undefined;
 	});
 
-	pi.registerCommand("savings", {
-		description: "Show token savings from output compression",
+	pi.registerCommand("token-saver", {
+		description: "Toggle token saver on/off, show stats, or reset. Usage: /token-saver [on|off|reset]",
 		handler: async (args, ctx) => {
-			if (args.trim() === "reset") {
+			const arg = args.trim().toLowerCase();
+			if (arg === "on") {
+				enabled = true;
+				ctx.ui.notify("Token saver enabled", "info");
+				return;
+			}
+			if (arg === "off") {
+				enabled = false;
+				ctx.ui.notify("Token saver disabled", "info");
+				return;
+			}
+			if (arg === "reset") {
 				savedTokens = 0;
 				compressedCount = 0;
 				totalToolResults = 0;
@@ -373,11 +387,13 @@ export default function (pi: ExtensionAPI) {
 				return;
 			}
 
+			// No args or unknown args: show status + stats
+			const status = enabled ? "ON" : "OFF";
 			const pct = totalToolResults > 0 ? Math.round((compressedCount / totalToolResults) * 100) : 0;
 			pi.sendMessage({
 				customType: "token-saver-stats",
 				content: [
-					`Token Saver Stats`,
+					`Token Saver: ${status}`,
 					`─────────────────`,
 					`Tool results processed: ${totalToolResults}`,
 					`Bash results filtered:  ${compressedCount} (${pct}%)`,
