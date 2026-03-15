@@ -5,10 +5,16 @@
  * command/tool outputs. Used by both token-saver (light filtering on
  * fresh output) and context-pruner (heavy summarization of old results).
  *
+ * This is a library module, not a standalone extension. It exports a
+ * no-op default function so pi doesn't error when auto-discovering it.
+ *
  * Two modes:
  *   - stripNoise(command, text): Remove clutter, keep content (for token-saver)
  *   - summarize(toolName, text, isError): Extract 1-3 line summary (for pruner)
  */
+
+// No-op extension factory so pi accepts this file in auto-discovery
+export default function () {}
 
 // --- Core helpers ---
 

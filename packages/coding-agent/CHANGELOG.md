@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added elapsed time display to the loader spinner, showing how long operations have been running (e.g. `Working... (12s)`)
+- Added spinner state differentiation: "Waiting for model..." (pre-generation), "Generating..." (streaming tokens), and tool name with target file during tool execution (e.g. `Edit: src/file.ts`)
+- Added input/output tokens-per-second display in the footer (e.g. `↑12k 450t/s ↓3k 8t/s`)
+- Added `token-saver` example extension (inspired by RTK) that strips noise from bash tool outputs using per-command filter rules while preserving meaningful content
+- Added `context-pruner` example extension that replaces old turn tool results with smart summaries using language-specific error extractors, keeping recent turns in full
+- Added shared `filters` module with error extractors for Python, Node.js, gcc, Rust, TypeScript, ESLint, pytest, and jest
+- Added `loop` example extension with `/loop <minutes> <prompt>` command that fires immediately when the agent finishes instead of waiting the full interval
+- Added `stuck-detection` example extension that detects repeated tool failures and identical agent responses, aborts the agent, and injects a steering message to try a different approach
+
+### Fixed
+
+- Fixed Qwen CLI extension example to use `qwen-chat-template` compat mode for local Qwen-compatible servers
+
 ## [0.58.3] - 2026-03-15
 
 ## [0.58.2] - 2026-03-15
