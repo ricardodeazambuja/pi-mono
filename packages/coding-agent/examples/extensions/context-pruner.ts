@@ -35,6 +35,10 @@ const KEEP_RECENT_TURNS = 3;
 export default function (pi: ExtensionAPI) {
 	let enabled = true;
 
+	pi.on("session_start", async (_event, ctx) => {
+		ctx.ui.setStatus("pruner", "pruner: waiting");
+	});
+
 	/**
 	 * Identify turn boundaries. A turn starts with each user message
 	 * and includes everything until the next user message.
