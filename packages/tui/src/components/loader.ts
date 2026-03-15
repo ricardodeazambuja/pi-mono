@@ -9,6 +9,7 @@ export class Loader extends Text {
 	private currentFrame = 0;
 	private intervalId: NodeJS.Timeout | null = null;
 	private ui: TUI | null = null;
+	private startTime: number = Date.now();
 
 	constructor(
 		ui: TUI,
@@ -26,6 +27,7 @@ export class Loader extends Text {
 	}
 
 	start() {
+		this.startTime = Date.now();
 		this.updateDisplay();
 		this.intervalId = setInterval(() => {
 			this.currentFrame = (this.currentFrame + 1) % this.frames.length;
@@ -45,9 +47,19 @@ export class Loader extends Text {
 		this.updateDisplay();
 	}
 
+	private formatElapsed(): string {
+		const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+		if (elapsed < 1) return "";
+		if (elapsed < 60) return ` (${elapsed}s)`;
+		const min = Math.floor(elapsed / 60);
+		const sec = elapsed % 60;
+		return ` (${min}m${sec.toString().padStart(2, "0")}s)`;
+	}
+
 	private updateDisplay() {
 		const frame = this.frames[this.currentFrame];
-		this.setText(`${this.spinnerColorFn(frame)} ${this.messageColorFn(this.message)}`);
+		const elapsed = this.formatElapsed();
+		this.setText(`${this.spinnerColorFn(frame)} ${this.messageColorFn(this.message + elapsed)}`);
 		if (this.ui) {
 			this.ui.requestRender();
 		}
