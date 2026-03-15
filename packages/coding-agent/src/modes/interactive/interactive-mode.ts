@@ -158,7 +158,7 @@ export class InteractiveMode {
 	private onInputCallback?: (text: string) => void;
 	private loadingAnimation: Loader | undefined = undefined;
 	private pendingWorkingMessage: string | undefined = undefined;
-	private readonly defaultWorkingMessage = "Working...";
+	private readonly defaultWorkingMessage = "Waiting for model...";
 
 	private lastSigintTime = 0;
 	private lastEscapeTime = 0;
@@ -2141,6 +2141,10 @@ export class InteractiveMode {
 					this.updatePendingMessagesDisplay();
 					this.ui.requestRender();
 				} else if (event.message.role === "assistant") {
+					this.footerDataProvider.recordMessageStart();
+					if (this.loadingAnimation) {
+						this.loadingAnimation.setMessage("Generating...");
+					}
 					this.streamingComponent = new AssistantMessageComponent(
 						undefined,
 						this.hideThinkingBlock,
@@ -2217,8 +2221,15 @@ export class InteractiveMode {
 							component.setArgsComplete();
 						}
 					}
+					this.footerDataProvider.recordMessageEnd(
+						this.streamingMessage.usage.input,
+						this.streamingMessage.usage.output,
+					);
 					this.streamingComponent = undefined;
 					this.streamingMessage = undefined;
+					if (this.loadingAnimation) {
+						this.loadingAnimation.setMessage(this.defaultWorkingMessage);
+					}
 					this.footer.invalidate();
 				}
 				this.ui.requestRender();
@@ -2240,6 +2251,12 @@ export class InteractiveMode {
 					this.pendingTools.set(event.toolCallId, component);
 					this.ui.requestRender();
 				}
+				if (this.loadingAnimation) {
+					const target =
+						event.args?.file_path || event.args?.path || event.args?.command || event.args?.pattern || "";
+					const short = typeof target === "string" && target.length > 40 ? `...${target.slice(-37)}` : target;
+					this.loadingAnimation.setMessage(short ? `${event.toolName}: ${short}` : event.toolName);
+				}
 				break;
 			}
 
@@ -2258,6 +2275,9 @@ export class InteractiveMode {
 					component.updateResult({ ...event.result, isError: event.isError });
 					this.pendingTools.delete(event.toolCallId);
 					this.ui.requestRender();
+				}
+				if (this.loadingAnimation) {
+					this.loadingAnimation.setMessage(this.defaultWorkingMessage);
 				}
 				break;
 			}
