@@ -26,6 +26,7 @@ export default function (pi: ExtensionAPI) {
 	let lastErrorDetail = "";
 	const recentResponses: string[] = [];
 	let stuckHandled = false;
+	let stuckCount = 0;
 
 	function reset() {
 		consecutiveErrors = 0;
@@ -35,6 +36,18 @@ export default function (pi: ExtensionAPI) {
 		stuckHandled = false;
 	}
 
+	function updateStatus(ctx: any) {
+		if (stuckCount === 0) {
+			ctx.ui.setStatus("stuck", "stuck: watching");
+		} else {
+			ctx.ui.setStatus("stuck", `stuck: ${stuckCount} detected`);
+		}
+	}
+
+	pi.on("session_start", async (_event, ctx) => {
+		updateStatus(ctx);
+	});
+
 	function fingerprint(text: string): string {
 		return text.replace(/\s+/g, " ").trim().slice(0, 500);
 	}
@@ -42,9 +55,11 @@ export default function (pi: ExtensionAPI) {
 	function handleStuck(ctx: any, reason: string, detail: string) {
 		if (stuckHandled) return;
 		stuckHandled = true;
+		stuckCount++;
 
 		ctx.abort();
 		ctx.ui.notify(reason, "warning");
+		updateStatus(ctx);
 
 		// Notify other extensions (e.g. loop) via event bus
 		pi.events.emit("stuck:detected", { reason, detail });

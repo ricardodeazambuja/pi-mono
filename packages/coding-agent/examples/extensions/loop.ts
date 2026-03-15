@@ -26,6 +26,7 @@ export default function (pi: ExtensionAPI) {
 	let currentPrompt = "";
 	let intervalMinutes = 0;
 	let loopActive = false;
+	let loopRuns = 0;
 
 	function clearLoop() {
 		if (intervalId) {
@@ -55,16 +56,16 @@ export default function (pi: ExtensionAPI) {
 	pi.events.on("stuck:detected", () => {
 		if (loopActive) {
 			const prompt = currentPrompt;
+			const runs = loopRuns;
 			clearLoop();
-			// Notification is best-effort — stuck-detection already notified the user
 			try {
 				pi.sendMessage({
 					customType: "loop-stopped",
-					content: `Loop auto-stopped: "${prompt}"`,
+					content: `Loop auto-stopped after ${runs} runs: "${prompt}"`,
 					display: true,
 				});
 			} catch {
-				// ignore if context unavailable
+				/* ignore */
 			}
 		}
 	});
@@ -72,6 +73,9 @@ export default function (pi: ExtensionAPI) {
 	// Fire next prompt immediately when agent finishes
 	pi.on("agent_end", async (_event, ctx) => {
 		if (!loopActive || !currentPrompt) return;
+
+		loopRuns++;
+		ctx.ui.setStatus("loop", `loop: run #${loopRuns}`);
 
 		setTimeout(() => {
 			if (loopActive && currentPrompt && ctx.isIdle()) {
@@ -90,7 +94,8 @@ export default function (pi: ExtensionAPI) {
 				if (loopActive) {
 					const prompt = currentPrompt;
 					clearLoop();
-					ctx.ui.notify(`Loop stopped: "${prompt}"`, "info");
+					ctx.ui.setStatus("loop", undefined);
+					ctx.ui.notify(`Loop stopped after ${loopRuns} runs: "${prompt}"`, "info");
 				} else {
 					ctx.ui.notify("No loop running", "info");
 				}
@@ -124,11 +129,13 @@ export default function (pi: ExtensionAPI) {
 				clearLoop();
 			}
 
+			loopRuns = 0;
 			currentPrompt = prompt;
 			intervalMinutes = minutes;
 			loopActive = true;
 			startTimer();
 
+			ctx.ui.setStatus("loop", "loop: started");
 			ctx.ui.notify(`Loop started: "${prompt}" (max ${minutes}m between runs)`, "info");
 		},
 	});

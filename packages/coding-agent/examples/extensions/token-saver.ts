@@ -34,6 +34,10 @@ export default function (pi: ExtensionAPI) {
 			.join("\n");
 	}
 
+	pi.on("session_start", async (_event, ctx) => {
+		ctx.ui.setStatus("token-saver", "saver: ready");
+	});
+
 	pi.on("tool_result" as any, async (event: any, ctx: any) => {
 		totalToolResults++;
 
