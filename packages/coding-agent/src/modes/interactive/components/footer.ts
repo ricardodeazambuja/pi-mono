@@ -127,10 +127,13 @@ export class FooterComponent implements Component {
 			pwd = `${pwd} • ${sessionName}`;
 		}
 
-		// Build stats line
+		// Build stats line — show live tokens/sec next to in/out, and append * when stats just updated
+		const fresh = this.footerData.isStatsFresh() ? " *" : "";
+		const inputTps = this.footerData.getLastInputTps();
+		const outputTps = this.footerData.getLastOutputTps();
 		const statsParts = [];
-		if (totalInput) statsParts.push(`↑${formatTokens(totalInput)}`);
-		if (totalOutput) statsParts.push(`↓${formatTokens(totalOutput)}`);
+		if (totalInput) statsParts.push(`↑${formatTokens(totalInput)}${inputTps ? ` ${inputTps}t/s` : ""}`);
+		if (totalOutput) statsParts.push(`↓${formatTokens(totalOutput)}${outputTps ? ` ${outputTps}t/s` : ""}${fresh}`);
 		if (totalCacheRead) statsParts.push(`R${formatTokens(totalCacheRead)}`);
 		if (totalCacheWrite) statsParts.push(`W${formatTokens(totalCacheWrite)}`);
 		if ((totalCacheRead > 0 || totalCacheWrite > 0) && latestCacheHitRate !== undefined) {
@@ -232,7 +235,7 @@ export class FooterComponent implements Component {
 			const sortedStatuses = Array.from(extensionStatuses.entries())
 				.sort(([a], [b]) => a.localeCompare(b))
 				.map(([, text]) => sanitizeStatusText(text));
-			const statusLine = sortedStatuses.join(" ");
+			const statusLine = sortedStatuses.join(" | ");
 			// Truncate to terminal width with dim ellipsis for consistency with footer style
 			lines.push(truncateToWidth(statusLine, width, theme.fg("dim", "...")));
 		}

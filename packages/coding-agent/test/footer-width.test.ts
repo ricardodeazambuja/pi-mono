@@ -60,7 +60,10 @@ function createSession(options: {
 	return session as unknown as AgentSession;
 }
 
-function createFooterData(providerCount: number): ReadonlyFooterDataProvider {
+function createFooterData(
+	providerCount: number,
+	stats: { inputTps?: number; outputTps?: number; fresh?: boolean } = {},
+): ReadonlyFooterDataProvider {
 	const provider = {
 		getGitBranch: () => "main",
 		getExtensionStatuses: () => new Map<string, string>(),
@@ -69,6 +72,9 @@ function createFooterData(providerCount: number): ReadonlyFooterDataProvider {
 			void callback;
 			return () => {};
 		},
+		getLastInputTps: () => stats.inputTps ?? 0,
+		getLastOutputTps: () => stats.outputTps ?? 0,
+		isStatsFresh: () => stats.fresh ?? false,
 	};
 
 	return provider;
@@ -140,5 +146,23 @@ describe("FooterComponent width handling", () => {
 
 		const statsLine = stripAnsi(footer.render(120)[1]);
 		expect(statsLine).toContain("CH25.0%");
+	});
+
+	it("shows live tokens/sec and a freshness marker when stats are fresh", () => {
+		const session = createSession({
+			sessionName: "",
+			usage: {
+				input: 100,
+				output: 10,
+				cacheRead: 0,
+				cacheWrite: 0,
+				cost: { total: 0.001 },
+			},
+		});
+		const footer = new FooterComponent(session, createFooterData(1, { inputTps: 42, outputTps: 7, fresh: true }));
+
+		const statsLine = stripAnsi(footer.render(120)[1]);
+		expect(statsLine).toContain("42t/s");
+		expect(statsLine).toContain("7t/s *");
 	});
 });
