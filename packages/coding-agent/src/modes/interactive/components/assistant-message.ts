@@ -15,6 +15,7 @@ export class AssistantMessageComponent extends Container {
 	private markdownTheme: MarkdownTheme;
 	private hiddenThinkingLabel: string;
 	private outputPad: number;
+	private renderMathInThinking: boolean;
 	private lastMessage?: AssistantMessage;
 	private hasToolCalls = false;
 
@@ -24,6 +25,7 @@ export class AssistantMessageComponent extends Container {
 		markdownTheme: MarkdownTheme = getMarkdownTheme(),
 		hiddenThinkingLabel = "Thinking...",
 		outputPad = 1,
+		renderMathInThinking = false,
 	) {
 		super();
 
@@ -31,6 +33,7 @@ export class AssistantMessageComponent extends Container {
 		this.markdownTheme = markdownTheme;
 		this.hiddenThinkingLabel = hiddenThinkingLabel;
 		this.outputPad = outputPad;
+		this.renderMathInThinking = renderMathInThinking;
 
 		// Container for text/thinking content
 		this.contentContainer = new Container();
@@ -131,9 +134,13 @@ export class AssistantMessageComponent extends Container {
 						new Text(theme.italic(theme.fg("thinkingText", this.hiddenThinkingLabel)), this.outputPad, 0),
 					);
 				} else {
-					// Render each run of thinking blocks as one Markdown section.
+					// Render each run of thinking blocks as one Markdown section. Math in
+					// the thinking trace renders only when enabled ("all" scope).
+					const thinkingTheme = this.renderMathInThinking
+						? this.markdownTheme
+						: { ...this.markdownTheme, mathMode: undefined };
 					this.contentContainer.addChild(
-						new Markdown(thinkingBlocks.join("\n\n"), this.outputPad, 0, this.markdownTheme, {
+						new Markdown(thinkingBlocks.join("\n\n"), this.outputPad, 0, thinkingTheme, {
 							color: (text: string) => theme.fg("thinkingText", text),
 							italic: true,
 						}),

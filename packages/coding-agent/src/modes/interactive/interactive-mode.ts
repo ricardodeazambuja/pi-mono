@@ -1025,7 +1025,7 @@ export class InteractiveMode {
 		return {
 			...getMarkdownTheme(),
 			codeBlockIndent: this.settingsManager.getCodeBlockIndent(),
-			mathMode: mathRender === "off" ? undefined : mathRender,
+			mathMode: mathRender === "off" ? undefined : "unicode",
 		};
 	}
 
@@ -2883,6 +2883,7 @@ export class InteractiveMode {
 						this.getMarkdownThemeWithSettings(),
 						this.hiddenThinkingLabel,
 						this.outputPad,
+						this.settingsManager.getMathRender() === "all",
 					);
 					this.streamingMessage = event.message;
 					this.chatContainer.addChild(this.streamingComponent);
@@ -3254,6 +3255,7 @@ export class InteractiveMode {
 					this.getMarkdownThemeWithSettings(),
 					this.hiddenThinkingLabel,
 					this.outputPad,
+					this.settingsManager.getMathRender() === "all",
 				);
 				this.chatContainer.addChild(assistantComponent);
 				break;

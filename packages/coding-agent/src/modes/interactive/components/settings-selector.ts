@@ -55,7 +55,7 @@ export interface SettingsConfig {
 	imageWidthCells: number;
 	autoResizeImages: boolean;
 	blockImages: boolean;
-	mathRender: "off" | "unicode" | "ascii";
+	mathRender: "off" | "user-response" | "all";
 	enableSkillCommands: boolean;
 	steeringMode: "all" | "one-at-a-time";
 	followUpMode: "all" | "one-at-a-time";
@@ -89,7 +89,7 @@ export interface SettingsCallbacks {
 	onImageWidthCellsChange: (width: number) => void;
 	onAutoResizeImagesChange: (enabled: boolean) => void;
 	onBlockImagesChange: (blocked: boolean) => void;
-	onMathRenderChange: (mode: "off" | "unicode" | "ascii") => void;
+	onMathRenderChange: (mode: "off" | "user-response" | "all") => void;
 	onEnableSkillCommandsChange: (enabled: boolean) => void;
 	onSteeringModeChange: (mode: "all" | "one-at-a-time") => void;
 	onFollowUpModeChange: (mode: "all" | "one-at-a-time") => void;
@@ -507,9 +507,10 @@ export class SettingsSelectorComponent extends Container {
 			{
 				id: "math-render",
 				label: "Math rendering",
-				description: "Typeset $…$/$$…$$ LaTeX as text-art (display only; the model still sees raw LaTeX)",
+				description:
+					"Typeset $…$/$$…$$ LaTeX as text-art (display only; model sees raw). 'user-response': responses; 'all': also in thinking",
 				currentValue: config.mathRender,
-				values: ["off", "unicode", "ascii"],
+				values: ["off", "user-response", "all"],
 			},
 			{
 				id: "transport",
@@ -762,7 +763,7 @@ export class SettingsSelectorComponent extends Container {
 						callbacks.onBlockImagesChange(newValue === "true");
 						break;
 					case "math-render":
-						callbacks.onMathRenderChange(newValue as "off" | "unicode" | "ascii");
+						callbacks.onMathRenderChange(newValue as "off" | "user-response" | "all");
 						break;
 					case "skill-commands":
 						callbacks.onEnableSkillCommandsChange(newValue === "true");
