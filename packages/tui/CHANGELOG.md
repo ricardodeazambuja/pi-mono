@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added elapsed time display to the `Loader` component, showing seconds/minutes alongside the spinner message (e.g. ` (1m23s)`)
+
 ## [0.80.10] - 2026-07-16
 
 ## [0.80.9] - 2026-07-16
