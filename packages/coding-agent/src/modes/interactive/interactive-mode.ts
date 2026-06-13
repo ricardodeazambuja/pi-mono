@@ -287,7 +287,7 @@ export class InteractiveMode {
 	private workingMessage: string | undefined = undefined;
 	private workingVisible = true;
 	private workingIndicatorOptions: LoaderIndicatorOptions | undefined = undefined;
-	private readonly defaultWorkingMessage = "Working...";
+	private readonly defaultWorkingMessage = "Waiting for model...";
 	private readonly defaultHiddenThinkingLabel = "Thinking...";
 	private hiddenThinkingLabel = this.defaultHiddenThinkingLabel;
 
@@ -2769,6 +2769,10 @@ export class InteractiveMode {
 					this.updatePendingMessagesDisplay();
 					this.ui.requestRender();
 				} else if (event.message.role === "assistant") {
+					this.footerDataProvider.recordMessageStart();
+					if (this.loadingAnimation) {
+						this.loadingAnimation.setMessage("Generating...");
+					}
 					this.streamingComponent = new AssistantMessageComponent(
 						undefined,
 						this.hideThinkingBlock,
@@ -2849,8 +2853,15 @@ export class InteractiveMode {
 							component.setArgsComplete();
 						}
 					}
+					this.footerDataProvider.recordMessageEnd(
+						this.streamingMessage.usage.input,
+						this.streamingMessage.usage.output,
+					);
 					this.streamingComponent = undefined;
 					this.streamingMessage = undefined;
+					if (this.loadingAnimation) {
+						this.loadingAnimation.setMessage(this.getWorkingLoaderMessage());
+					}
 					this.footer.invalidate();
 				}
 				this.ui.requestRender();
@@ -2877,6 +2888,14 @@ export class InteractiveMode {
 				}
 				component.markExecutionStarted();
 				this.ui.requestRender();
+				if (this.loadingAnimation) {
+					const args = (event.args ?? {}) as Record<string, unknown>;
+					const raw = [args.file_path, args.path, args.command, args.pattern].find(
+						(v): v is string => typeof v === "string" && v.length > 0,
+					);
+					const short = raw && raw.length > 40 ? `...${raw.slice(-37)}` : (raw ?? "");
+					this.loadingAnimation.setMessage(short ? `${event.toolName}: ${short}` : event.toolName);
+				}
 				break;
 			}
 
@@ -2895,6 +2914,9 @@ export class InteractiveMode {
 					component.updateResult({ ...event.result, isError: event.isError });
 					this.pendingTools.delete(event.toolCallId);
 					this.ui.requestRender();
+				}
+				if (this.loadingAnimation) {
+					this.loadingAnimation.setMessage(this.getWorkingLoaderMessage());
 				}
 				break;
 			}
