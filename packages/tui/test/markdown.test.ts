@@ -2,7 +2,7 @@ import assert from "node:assert";
 import { afterEach, describe, it } from "node:test";
 import type { Terminal as XtermTerminalType } from "@xterm/headless";
 import { Chalk } from "chalk";
-import { Markdown } from "../src/components/markdown.ts";
+import { Markdown, type MarkdownTheme } from "../src/components/markdown.ts";
 import { resetCapabilitiesCache, setCapabilities } from "../src/terminal-image.ts";
 import { type Component, TUI } from "../src/tui.ts";
 import { defaultMarkdownTheme } from "./test-themes.ts";
@@ -1375,5 +1375,49 @@ bar`,
 				"Should render HTML in code blocks",
 			);
 		});
+	});
+});
+
+describe("Markdown math rendering", () => {
+	const mathTheme: MarkdownTheme = { ...defaultMarkdownTheme, mathMode: "unicode" };
+	const plain = (md: string, theme: MarkdownTheme = mathTheme, width = 80): string =>
+		new Markdown(md, 0, 0, theme).render(width).map(stripAnsi).join("\n");
+
+	it("typesets display math as text-art when enabled", () => {
+		const out = plain("$$\\frac{a}{b}$$");
+		assert.ok(out.includes("─"), "should contain a fraction rule");
+		assert.ok(!out.includes("$$"), "raw delimiters should be gone");
+	});
+
+	it("inlines single-line math into the surrounding text", () => {
+		const out = plain("energy $E = mc^2$ here");
+		assert.ok(out.includes("mc²"), `expected mc², got: ${out}`);
+		assert.ok(out.includes("energy") && out.includes("here"));
+	});
+
+	it("falls back to raw source for multi-line inline math", () => {
+		const out = plain("a fraction $\\frac{a}{b}$ inline");
+		assert.ok(out.includes("$\\frac{a}{b}$"), `expected raw fallback, got: ${out}`);
+	});
+
+	it("does not treat currency as math", () => {
+		const out = plain("it costs $5 and $6 dollars");
+		assert.ok(out.includes("$5 and $6 dollars"), `currency mangled: ${out}`);
+	});
+
+	it("falls back to raw for unsupported constructs", () => {
+		const out = plain("$$\\begin{matrix} a & b \\end{matrix}$$");
+		assert.ok(out.includes("\\begin{matrix}"), `expected raw fallback, got: ${out}`);
+	});
+
+	it("leaves math as raw source when mathMode is off (default)", () => {
+		const out = plain("$$\\frac{a}{b}$$", defaultMarkdownTheme);
+		assert.ok(out.includes("$$\\frac{a}{b}$$"), `expected raw, got: ${out}`);
+		assert.ok(!out.includes("─"), "should not typeset when disabled");
+	});
+
+	it("does not disturb non-math markdown when enabled", () => {
+		const md = "# Title\n\nSome **bold** and `code` and a list:\n\n- one\n- two\n";
+		assert.strictEqual(plain(md, mathTheme), plain(md, defaultMarkdownTheme));
 	});
 });

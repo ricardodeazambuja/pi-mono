@@ -954,9 +954,11 @@ export class InteractiveMode {
 	}
 
 	private getMarkdownThemeWithSettings(): MarkdownTheme {
+		const mathRender = this.settingsManager.getMathRender();
 		return {
 			...getMarkdownTheme(),
 			codeBlockIndent: this.settingsManager.getCodeBlockIndent(),
+			mathMode: mathRender === "off" ? undefined : mathRender,
 		};
 	}
 
@@ -3987,6 +3989,7 @@ export class InteractiveMode {
 					imageWidthCells: this.settingsManager.getImageWidthCells(),
 					autoResizeImages: this.settingsManager.getImageAutoResize(),
 					blockImages: this.settingsManager.getBlockImages(),
+					mathRender: this.settingsManager.getMathRender(),
 					enableSkillCommands: this.settingsManager.getEnableSkillCommands(),
 					steeringMode: this.session.steeringMode,
 					followUpMode: this.session.followUpMode,
@@ -4036,6 +4039,12 @@ export class InteractiveMode {
 					},
 					onBlockImagesChange: (blocked) => {
 						this.settingsManager.setBlockImages(blocked);
+					},
+					onMathRenderChange: (mode) => {
+						this.settingsManager.setMathRender(mode);
+						// Re-render existing messages so the change applies immediately.
+						this.chatContainer.clear();
+						this.rebuildChatFromMessages();
 					},
 					onEnableSkillCommandsChange: (enabled) => {
 						this.settingsManager.setEnableSkillCommands(enabled);

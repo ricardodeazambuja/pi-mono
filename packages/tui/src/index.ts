@@ -57,6 +57,8 @@ export {
 	parseKey,
 	setKittyProtocolActive,
 } from "./keys.ts";
+// LaTeX math → Unicode/ASCII text-art (used by the markdown renderer)
+export { type RenderMathOptions, renderMath } from "./math/index.ts";
 // Input buffering for batch splitting
 export { StdinBuffer, type StdinBufferEventMap, type StdinBufferOptions } from "./stdin-buffer.ts";
 // Terminal interface and implementations

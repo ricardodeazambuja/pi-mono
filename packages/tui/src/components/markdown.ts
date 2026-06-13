@@ -1,4 +1,5 @@
-import { Marked, type Token, Tokenizer, type Tokens } from "marked";
+import { Marked, type Token, Tokenizer, type TokenizerAndRendererExtension, type Tokens } from "marked";
+import { renderMath } from "../math/index.ts";
 import { getCapabilities, hyperlink, isImageLine } from "../terminal-image.ts";
 import type { Component } from "../tui.ts";
 import { applyBackgroundToLine, visibleWidth, wrapTextWithAnsi } from "../utils.ts";
@@ -26,6 +27,53 @@ const markdownParser = new Marked();
 markdownParser.setOptions({
 	tokenizer: new StrictStrikethroughTokenizer(),
 });
+
+/**
+ * Math delimiters: `$$…$$` (display) and `$…$` (inline). The delimiter rules
+ * avoid currency false positives — the inline form requires a non-space after
+ * the opening `$`, a non-space before the closing `$`, no digit immediately
+ * after it, and allows escaped `\$`. The tokens carry no children; rendering
+ * walks them directly. `raw` keeps the delimiters so the renderer can fall back
+ * to the original source when the math can't be typeset.
+ */
+const mathBlockExtension: TokenizerAndRendererExtension = {
+	name: "mathBlock",
+	level: "block",
+	start(src) {
+		const i = src.indexOf("$$");
+		return i < 0 ? undefined : i;
+	},
+	tokenizer(src) {
+		const match = /^\$\$([\s\S]+?)\$\$/.exec(src);
+		if (!match) return undefined;
+		return { type: "mathBlock", raw: match[0], text: match[1].trim() };
+	},
+	renderer: () => "",
+};
+
+const mathInlineExtension: TokenizerAndRendererExtension = {
+	name: "mathInline",
+	level: "inline",
+	start(src) {
+		const i = src.indexOf("$");
+		return i < 0 ? undefined : i;
+	},
+	tokenizer(src) {
+		if (src.startsWith("$$")) return undefined;
+		const match = /^\$(?!\s)((?:\\.|[^$\\])*?[^\s$\\])\$(?![0-9])/.exec(src);
+		if (!match) return undefined;
+		return { type: "mathInline", raw: match[0], text: match[1] };
+	},
+	renderer: () => "",
+};
+
+// A second parser with the math extensions. Selecting between the two per render
+// keeps the default (math-disabled) path byte-for-byte identical to before.
+const markdownMathParser = new Marked();
+markdownMathParser.setOptions({
+	tokenizer: new StrictStrikethroughTokenizer(),
+});
+markdownMathParser.use({ extensions: [mathBlockExtension, mathInlineExtension] });
 
 /**
  * Default text styling for markdown content.
@@ -68,6 +116,11 @@ export interface MarkdownTheme {
 	highlightCode?: (code: string, lang?: string) => string[];
 	/** Prefix applied to each rendered code block line (default: "  ") */
 	codeBlockIndent?: string;
+	/**
+	 * When set, `$…$`/`$$…$$` math is typeset as Unicode ("unicode") or ASCII
+	 * ("ascii") text-art. Undefined leaves math as raw source (default).
+	 */
+	mathMode?: "unicode" | "ascii";
 }
 
 export interface MarkdownOptions {
@@ -143,8 +196,10 @@ export class Markdown implements Component {
 		// Replace tabs with 3 spaces for consistent rendering
 		const normalizedText = this.text.replace(/\t/g, "   ");
 
-		// Parse markdown to HTML-like tokens
-		const tokens = markdownParser.lexer(normalizedText);
+		// Parse markdown to HTML-like tokens. Use the math-aware parser only when
+		// math rendering is enabled, so the default path is unchanged.
+		const parser = this.theme.mathMode ? markdownMathParser : markdownParser;
+		const tokens = parser.lexer(normalizedText);
 
 		// Convert tokens to styled terminal output
 		const renderedLines: string[] = [];
@@ -304,6 +359,10 @@ export class Markdown implements Component {
 	): string[] {
 		const lines: string[] = [];
 
+		if ((token.type as string) === "mathBlock") {
+			return this.renderMathBlock(token as Tokens.Generic, width, nextTokenType);
+		}
+
 		switch (token.type) {
 			case "heading": {
 				const headingLevel = token.depth;
@@ -461,6 +520,42 @@ export class Markdown implements Component {
 		return lines;
 	}
 
+	/**
+	 * Render a `$$…$$` display-math block as indented text-art. Falls back to the
+	 * raw source when the engine returns null or the art would be wider than the
+	 * content area (which would be shattered by the later word-wrap pass).
+	 */
+	private renderMathBlock(token: Tokens.Generic, width: number, nextTokenType?: string): string[] {
+		const lines: string[] = [];
+		const indent = this.theme.codeBlockIndent ?? "  ";
+		const raw = typeof token.raw === "string" ? token.raw : "";
+		const text = typeof token.text === "string" ? token.text : "";
+		const available = Math.max(1, width - visibleWidth(indent));
+		const rendered = renderMath(text, { display: true, ascii: this.theme.mathMode === "ascii", width: available });
+		const fits = rendered?.every((line) => visibleWidth(indent + line) <= width) ?? false;
+		const output = rendered && fits ? rendered : raw.split("\n");
+		for (const line of output) {
+			lines.push(`${indent}${line}`);
+		}
+		if (nextTokenType && nextTokenType !== "space") {
+			lines.push("");
+		}
+		return lines;
+	}
+
+	/**
+	 * Render inline `$…$` math. Only inlined when it fits on a single line;
+	 * multi-line results (e.g. a fraction) or a null fall back to raw source so
+	 * the surrounding line flow is never broken.
+	 */
+	private renderInlineMath(token: Tokens.Generic, context: InlineStyleContext): string {
+		const raw = typeof token.raw === "string" ? token.raw : "";
+		const text = typeof token.text === "string" ? token.text : "";
+		const rendered = renderMath(text, { display: false, ascii: this.theme.mathMode === "ascii", width: 60 });
+		const value = rendered && rendered.length === 1 ? rendered[0] : raw;
+		return context.applyText(value) + context.stylePrefix;
+	}
+
 	private renderInlineTokens(tokens: Token[], styleContext?: InlineStyleContext): string {
 		let result = "";
 		const resolvedStyleContext = styleContext ?? this.getDefaultInlineStyleContext();
@@ -471,6 +566,10 @@ export class Markdown implements Component {
 		};
 
 		for (const token of tokens) {
+			if ((token.type as string) === "mathInline") {
+				result += this.renderInlineMath(token as Tokens.Generic, resolvedStyleContext);
+				continue;
+			}
 			switch (token.type) {
 				case "text":
 					// Text tokens in list items can have nested tokens for inline formatting

@@ -43,6 +43,12 @@ export interface ImageSettings {
 	blockImages?: boolean; // default: false - when true, prevents all images from being sent to LLM providers
 }
 
+export interface MathSettings {
+	// Render LaTeX math ($...$ / $$...$$) as text-art for display only; the model
+	// always sees the raw LaTeX. "off" (default) leaves math as raw source.
+	render?: "off" | "unicode" | "ascii";
+}
+
 export interface ThinkingBudgetsSettings {
 	minimal?: number;
 	low?: number;
@@ -107,6 +113,7 @@ export interface Settings {
 	enableSkillCommands?: boolean; // default: true - register skills as /skill:name commands
 	terminal?: TerminalSettings;
 	images?: ImageSettings;
+	math?: MathSettings;
 	enabledModels?: string[]; // Model patterns for cycling (same format as --models CLI flag)
 	doubleEscapeAction?: "fork" | "tree" | "none"; // Action for double-escape with empty editor (default: "tree")
 	treeFilterMode?: "default" | "no-tools" | "user-only" | "labeled-only" | "all"; // Default filter when opening /tree
@@ -1033,6 +1040,19 @@ export class SettingsManager {
 		}
 		this.globalSettings.terminal.showImages = show;
 		this.markModified("terminal", "showImages");
+		this.save();
+	}
+
+	getMathRender(): "off" | "unicode" | "ascii" {
+		return this.settings.math?.render ?? "off";
+	}
+
+	setMathRender(render: "off" | "unicode" | "ascii"): void {
+		if (!this.globalSettings.math) {
+			this.globalSettings.math = {};
+		}
+		this.globalSettings.math.render = render;
+		this.markModified("math", "render");
 		this.save();
 	}
 

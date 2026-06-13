@@ -47,6 +47,7 @@ export interface SettingsConfig {
 	imageWidthCells: number;
 	autoResizeImages: boolean;
 	blockImages: boolean;
+	mathRender: "off" | "unicode" | "ascii";
 	enableSkillCommands: boolean;
 	steeringMode: "all" | "one-at-a-time";
 	followUpMode: "all" | "one-at-a-time";
@@ -77,6 +78,7 @@ export interface SettingsCallbacks {
 	onImageWidthCellsChange: (width: number) => void;
 	onAutoResizeImagesChange: (enabled: boolean) => void;
 	onBlockImagesChange: (blocked: boolean) => void;
+	onMathRenderChange: (mode: "off" | "unicode" | "ascii") => void;
 	onEnableSkillCommandsChange: (enabled: boolean) => void;
 	onSteeringModeChange: (mode: "all" | "one-at-a-time") => void;
 	onFollowUpModeChange: (mode: "all" | "one-at-a-time") => void;
@@ -245,6 +247,13 @@ export class SettingsSelectorComponent extends Container {
 				description: `${followUpKey} queues follow-up messages until agent stops. 'one-at-a-time': deliver one, wait for response. 'all': deliver all at once.`,
 				currentValue: config.followUpMode,
 				values: ["one-at-a-time", "all"],
+			},
+			{
+				id: "math-render",
+				label: "Math rendering",
+				description: "Typeset $…$/$$…$$ LaTeX as text-art (display only; the model still sees raw LaTeX)",
+				currentValue: config.mathRender,
+				values: ["off", "unicode", "ascii"],
 			},
 			{
 				id: "transport",
@@ -499,6 +508,9 @@ export class SettingsSelectorComponent extends Container {
 						break;
 					case "block-images":
 						callbacks.onBlockImagesChange(newValue === "true");
+						break;
+					case "math-render":
+						callbacks.onMathRenderChange(newValue as "off" | "unicode" | "ascii");
 						break;
 					case "skill-commands":
 						callbacks.onEnableSkillCommandsChange(newValue === "true");
