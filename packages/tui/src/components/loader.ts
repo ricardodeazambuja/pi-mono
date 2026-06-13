@@ -24,6 +24,8 @@ export class Loader extends Text {
 	private spinnerColorFn: (str: string) => string;
 	private messageColorFn: (str: string) => string;
 	private message: string = "Loading...";
+	// Timestamp the loader was created (i.e. when work began); used to show elapsed time.
+	private startTime: number = Date.now();
 
 	constructor(
 		ui: TUI,
@@ -80,11 +82,20 @@ export class Loader extends Text {
 		}, this.intervalMs);
 	}
 
+	private formatElapsed(): string {
+		const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+		if (elapsed < 1) return "";
+		if (elapsed < 60) return ` (${elapsed}s)`;
+		const min = Math.floor(elapsed / 60);
+		const sec = elapsed % 60;
+		return ` (${min}m${sec.toString().padStart(2, "0")}s)`;
+	}
+
 	private updateDisplay(): void {
 		const frame = this.frames[this.currentFrame] ?? "";
 		const renderedFrame = this.renderIndicatorVerbatim ? frame : this.spinnerColorFn(frame);
 		const indicator = frame.length > 0 ? `${renderedFrame} ` : "";
-		this.setText(`${indicator}${this.messageColorFn(this.message)}`);
+		this.setText(`${indicator}${this.messageColorFn(this.message + this.formatElapsed())}`);
 		if (this.ui) {
 			this.ui.requestRender();
 		}
