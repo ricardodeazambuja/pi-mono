@@ -205,6 +205,20 @@ function quoteIfNeeded(value: string): string {
 	return `'${value.replace(/'/g, `'\\''`)}'`;
 }
 
+/**
+ * Build the working-loader message shown while a tool runs: "<toolName>: <target>",
+ * where target is the tool's file_path/path/command/pattern (whichever is present first),
+ * truncated to its last 37 chars when longer than 40. Falls back to the bare tool name.
+ */
+export function formatToolWorkingMessage(toolName: string, args: unknown): string {
+	const fields = (args ?? {}) as Record<string, unknown>;
+	const target = [fields.file_path, fields.path, fields.command, fields.pattern].find(
+		(v): v is string => typeof v === "string" && v.length > 0,
+	);
+	const short = target && target.length > 40 ? `...${target.slice(-37)}` : (target ?? "");
+	return short ? `${toolName}: ${short}` : toolName;
+}
+
 export function formatResumeCommand(sessionManager: SessionManager): string | undefined {
 	if (!process.stdout.isTTY) return undefined;
 	if (!sessionManager.isPersisted()) return undefined;
@@ -2889,12 +2903,7 @@ export class InteractiveMode {
 				component.markExecutionStarted();
 				this.ui.requestRender();
 				if (this.loadingAnimation) {
-					const args = (event.args ?? {}) as Record<string, unknown>;
-					const raw = [args.file_path, args.path, args.command, args.pattern].find(
-						(v): v is string => typeof v === "string" && v.length > 0,
-					);
-					const short = raw && raw.length > 40 ? `...${raw.slice(-37)}` : (raw ?? "");
-					this.loadingAnimation.setMessage(short ? `${event.toolName}: ${short}` : event.toolName);
+					this.loadingAnimation.setMessage(formatToolWorkingMessage(event.toolName, event.args));
 				}
 				break;
 			}
