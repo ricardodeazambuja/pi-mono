@@ -395,4 +395,21 @@ describe("SettingsManager", () => {
 			expect(manager.getSessionDir()).toBe(join(homedir(), "sessions"));
 		});
 	});
+
+	describe("math rendering", () => {
+		it("defaults to off and round-trips through settings.json", async () => {
+			const manager = SettingsManager.create(projectDir, agentDir);
+			expect(manager.getMathRender()).toBe("off");
+
+			manager.setMathRender("unicode");
+			await manager.flush();
+			expect(manager.getMathRender()).toBe("unicode");
+
+			const saved = JSON.parse(readFileSync(join(agentDir, "settings.json"), "utf-8"));
+			expect(saved.math.render).toBe("unicode");
+
+			// A freshly started manager reads the persisted value back.
+			expect(SettingsManager.create(projectDir, agentDir).getMathRender()).toBe("unicode");
+		});
+	});
 });

@@ -1420,4 +1420,22 @@ describe("Markdown math rendering", () => {
 		const md = "# Title\n\nSome **bold** and `code` and a list:\n\n- one\n- two\n";
 		assert.strictEqual(plain(md, mathTheme), plain(md, defaultMarkdownTheme));
 	});
+
+	it("lands typeset math on the real terminal grid", async () => {
+		const terminal = new VirtualTerminal(70, 10);
+		const tui = new TUI(terminal);
+		tui.addChild(new Markdown("The result is $$\\frac{a}{b}$$ shown.", 1, 0, mathTheme));
+		tui.start();
+		await terminal.waitForRender();
+		const xterm = (terminal as unknown as { xterm: XtermTerminalType }).xterm;
+		const buffer = xterm.buffer.active;
+		const rows: string[] = [];
+		for (let r = 0; r < 10; r++) {
+			rows.push((buffer.getLine(buffer.viewportY + r)?.translateToString(true) ?? "").replace(/\s+$/u, ""));
+		}
+		tui.stop();
+		const joined = rows.join("\n");
+		assert.ok(joined.includes("─"), `fraction rule should land on the grid:\n${joined}`);
+		assert.ok(!joined.includes("$$"), "raw delimiters should not appear on the grid");
+	});
 });
