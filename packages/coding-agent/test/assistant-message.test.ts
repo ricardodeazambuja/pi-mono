@@ -1,7 +1,9 @@
 import type { AssistantMessage } from "@earendil-works/pi-ai";
 import { describe, expect, test } from "vitest";
 import { AssistantMessageComponent } from "../src/modes/interactive/components/assistant-message.ts";
-import { initTheme } from "../src/modes/interactive/theme/theme.ts";
+import { getMarkdownTheme, initTheme } from "../src/modes/interactive/theme/theme.ts";
+
+const stripAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "");
 
 const OSC133_ZONE_START = "\x1b]133;A\x07";
 const OSC133_ZONE_END = "\x1b]133;B\x07";
@@ -53,5 +55,30 @@ describe("AssistantMessageComponent", () => {
 		expect(rendered.includes(OSC133_ZONE_START)).toBe(false);
 		expect(rendered.includes(OSC133_ZONE_END)).toBe(false);
 		expect(rendered.includes(OSC133_ZONE_FINAL)).toBe(false);
+	});
+
+	describe("math in the thinking trace", () => {
+		initTheme("dark");
+		const mathTheme = { ...getMarkdownTheme(), mathMode: "unicode" as const };
+		const message = createAssistantMessage([
+			{ type: "thinking", thinking: "consider $$\\frac{a}{b}$$" },
+			{ type: "text", text: "answer is $x^2$" },
+		]);
+
+		test("renders response math but leaves thinking math raw when not 'all'", () => {
+			const component = new AssistantMessageComponent(message, false, mathTheme, "Thinking...", false);
+			const out = stripAnsi(component.render(60).join("\n"));
+			expect(out).toContain("x²"); // response math always renders
+			expect(out).toContain("$$\\frac{a}{b}$$"); // thinking math stays raw
+			expect(out).not.toContain("─");
+		});
+
+		test("renders thinking math when enabled ('all')", () => {
+			const component = new AssistantMessageComponent(message, false, mathTheme, "Thinking...", true);
+			const out = stripAnsi(component.render(60).join("\n"));
+			expect(out).toContain("x²");
+			expect(out).toContain("─"); // fraction rule from the thinking trace
+			expect(out).not.toContain("$$\\frac{a}{b}$$");
+		});
 	});
 });

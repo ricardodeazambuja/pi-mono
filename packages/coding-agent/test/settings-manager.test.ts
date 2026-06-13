@@ -397,19 +397,28 @@ describe("SettingsManager", () => {
 	});
 
 	describe("math rendering", () => {
-		it("defaults to off and round-trips through settings.json", async () => {
+		it("defaults to off and round-trips the render scope through settings.json", async () => {
 			const manager = SettingsManager.create(projectDir, agentDir);
 			expect(manager.getMathRender()).toBe("off");
 
-			manager.setMathRender("unicode");
+			manager.setMathRender("all");
 			await manager.flush();
-			expect(manager.getMathRender()).toBe("unicode");
+			expect(manager.getMathRender()).toBe("all");
 
 			const saved = JSON.parse(readFileSync(join(agentDir, "settings.json"), "utf-8"));
-			expect(saved.math.render).toBe("unicode");
+			expect(saved.math.render).toBe("all");
 
 			// A freshly started manager reads the persisted value back.
-			expect(SettingsManager.create(projectDir, agentDir).getMathRender()).toBe("unicode");
+			expect(SettingsManager.create(projectDir, agentDir).getMathRender()).toBe("all");
+
+			manager.setMathRender("user-response");
+			await manager.flush();
+			expect(SettingsManager.create(projectDir, agentDir).getMathRender()).toBe("user-response");
+		});
+
+		it("maps legacy unicode/ascii values onto the response scope", () => {
+			writeFileSync(join(agentDir, "settings.json"), JSON.stringify({ math: { render: "unicode" } }));
+			expect(SettingsManager.create(projectDir, agentDir).getMathRender()).toBe("user-response");
 		});
 	});
 });

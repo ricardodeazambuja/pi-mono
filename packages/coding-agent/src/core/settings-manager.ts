@@ -45,9 +45,13 @@ export interface ImageSettings {
 
 export interface MathSettings {
 	// Render LaTeX math ($...$ / $$...$$) as text-art for display only; the model
-	// always sees the raw LaTeX. "off" (default) leaves math as raw source.
-	render?: "off" | "unicode" | "ascii";
+	// always sees the raw LaTeX. Scope: "off" (default) leaves math as raw;
+	// "user-response" renders in your messages and the agent's responses;
+	// "all" additionally renders inside the agent's thinking trace.
+	render?: "off" | "user-response" | "all";
 }
+
+export type MathRenderScope = "off" | "user-response" | "all";
 
 export interface ThinkingBudgetsSettings {
 	minimal?: number;
@@ -1043,11 +1047,15 @@ export class SettingsManager {
 		this.save();
 	}
 
-	getMathRender(): "off" | "unicode" | "ascii" {
-		return this.settings.math?.render ?? "off";
+	getMathRender(): MathRenderScope {
+		const value = this.settings.math?.render as string | undefined;
+		if (value === "user-response" || value === "all") return value;
+		// Map the initial unicode/ascii design onto the response scope.
+		if (value === "unicode" || value === "ascii") return "user-response";
+		return "off";
 	}
 
-	setMathRender(render: "off" | "unicode" | "ascii"): void {
+	setMathRender(render: MathRenderScope): void {
 		if (!this.globalSettings.math) {
 			this.globalSettings.math = {};
 		}
