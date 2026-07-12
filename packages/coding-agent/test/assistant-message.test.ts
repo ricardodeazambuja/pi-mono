@@ -1,15 +1,18 @@
 import type { AssistantMessage } from "@earendil-works/pi-ai";
 import { describe, expect, test } from "vitest";
 import { AssistantMessageComponent } from "../src/modes/interactive/components/assistant-message.ts";
+import { UserMessageComponent } from "../src/modes/interactive/components/user-message.ts";
 import { getMarkdownTheme, initTheme } from "../src/modes/interactive/theme/theme.ts";
-
-const stripAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "");
+import { stripAnsi } from "../src/utils/ansi.ts";
 
 const OSC133_ZONE_START = "\x1b]133;A\x07";
 const OSC133_ZONE_END = "\x1b]133;B\x07";
 const OSC133_ZONE_FINAL = "\x1b]133;C\x07";
 
-function createAssistantMessage(content: AssistantMessage["content"]): AssistantMessage {
+function createAssistantMessage(
+	content: AssistantMessage["content"],
+	overrides: Partial<Pick<AssistantMessage, "stopReason">> = {},
+): AssistantMessage {
 	return {
 		role: "assistant",
 		content,
@@ -24,7 +27,7 @@ function createAssistantMessage(content: AssistantMessage["content"]): Assistant
 			totalTokens: 0,
 			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
 		},
-		stopReason: "stop",
+		stopReason: overrides.stopReason ?? "stop",
 		timestamp: Date.now(),
 	};
 }
@@ -66,7 +69,7 @@ describe("AssistantMessageComponent", () => {
 		]);
 
 		test("renders response math but leaves thinking math raw when not 'all'", () => {
-			const component = new AssistantMessageComponent(message, false, mathTheme, "Thinking...", false);
+			const component = new AssistantMessageComponent(message, false, mathTheme, "Thinking...", 1, false);
 			const out = stripAnsi(component.render(60).join("\n"));
 			expect(out).toContain("x²"); // response math always renders
 			expect(out).toContain("$$\\frac{a}{b}$$"); // thinking math stays raw
@@ -74,11 +77,61 @@ describe("AssistantMessageComponent", () => {
 		});
 
 		test("renders thinking math when enabled ('all')", () => {
-			const component = new AssistantMessageComponent(message, false, mathTheme, "Thinking...", true);
+			const component = new AssistantMessageComponent(message, false, mathTheme, "Thinking...", 1, true);
 			const out = stripAnsi(component.render(60).join("\n"));
 			expect(out).toContain("x²");
 			expect(out).toContain("─"); // fraction rule from the thinking trace
 			expect(out).not.toContain("$$\\frac{a}{b}$$");
 		});
+	});
+
+	test("renders length stops as visible errors", () => {
+		initTheme("dark");
+
+		const component = new AssistantMessageComponent(
+			createAssistantMessage([{ type: "thinking", thinking: "private reasoning" }], { stopReason: "length" }),
+			true,
+		);
+		const rendered = component.render(80).join("\n");
+
+		expect(rendered).toContain("Thinking...");
+		expect(rendered).toContain("maximum output token limit");
+		expect(rendered).toContain("response may be incomplete");
+	});
+
+	test("uses configured output padding for text and thinking", () => {
+		initTheme("dark");
+
+		const component = new AssistantMessageComponent(
+			createAssistantMessage([
+				{ type: "text", text: "hello" },
+				{ type: "thinking", thinking: "reasoning" },
+			]),
+			false,
+			undefined,
+			"Thinking...",
+			1,
+		);
+		const lines = component.render(80).map((line) => stripAnsi(line));
+
+		expect(lines.some((line) => line.includes(" hello"))).toBe(true);
+		expect(lines.some((line) => line.includes(" reasoning"))).toBe(true);
+
+		component.setOutputPad(0);
+		const updatedLines = component.render(80).map((line) => stripAnsi(line));
+		expect(updatedLines.some((line) => line.startsWith("hello"))).toBe(true);
+		expect(updatedLines.some((line) => line.startsWith("reasoning"))).toBe(true);
+	});
+
+	test("uses configured output padding for user messages", () => {
+		initTheme("dark");
+
+		const paddedComponent = new UserMessageComponent("hello", undefined, 1);
+		const paddedLines = paddedComponent.render(40).map((line) => stripAnsi(line));
+		expect(paddedLines.some((line) => line.startsWith(" hello"))).toBe(true);
+
+		const unpaddedComponent = new UserMessageComponent("hello", undefined, 0);
+		const unpaddedLines = unpaddedComponent.render(40).map((line) => stripAnsi(line));
+		expect(unpaddedLines.some((line) => line.startsWith("hello"))).toBe(true);
 	});
 });
